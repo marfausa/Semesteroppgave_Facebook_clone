@@ -7,20 +7,24 @@ from flask import (
     abort,
     g,
     jsonify,
+    redirect,
     request,
     send_from_directory,
     make_response,
     render_template,
     session,
+    url_for,
 )
+from urllib.parse import urlparse
 from werkzeug.datastructures import WWWAuthenticate
+from werkzeug.security import generate_password_hash, check_password_hash
 from base64 import b64decode
 from apsw import Error
 from markupsafe import Markup, escape
 from box import Box
 from .login_form import LoginForm
 from .profile_form import ProfileForm
-
+from . import openid_connect
 db = None
 
 ################################
@@ -40,6 +44,9 @@ app = Flask(
 # The secret key enables storing encrypted session data in a cookie (TODO: make a secure random key for this! and don't store it in Git!)
 app.config["SECRET_KEY"] = "mY s3kritz"
 app.config["TEMPLATES_AUTO_RELOAD"] = True
+#app.config["GITLAB_BASE_URL"] = 'https://git.app.uib.no/'
+#app.config["GITLAB_CLIENT_ID"] = ''
+#app.config["GITLAB_CLIENT_SECRET"] = ''
 # Pick appropriate values for these
 #app.config['SESSION_COOKIE_NAME'] = 
 #app.config['SESSION_COOKIE_SAMESITE'] = 
@@ -158,7 +165,7 @@ def request_loader(request):
         )
         debug(f"Basic auth: {uname}:{passwd}")
         u = User.get_user(uname)
-        if u:  # TODO: and check_password(u.password, passwd):
+        if u and u.password == passwd:
             return u
     elif auth_scheme == "bearer":  # Bearer auth contains an access token;
         # an 'access token' is a unique string that both identifies
@@ -231,6 +238,7 @@ def serve_static(filename, ext):
 def login():
     """Render (GET) or process (POST) login form"""
 
+    debug('/login/ – session:', session, request.host_url)
     form = LoginForm()
 
     if not form.next.data:
@@ -241,31 +249,29 @@ def login():
             f'Received form:\n    {form.data}\n{"INVALID" if not form.validate() else "valid"} {form.errors}'
         )
         if form.validate():
-            # TODO: we must check the username and password
             username = form.username.data
             password = form.password.data
             user = user_loader(username)
-            if user:  # and check_password(user.password, password):
+            if user and user.password == password:
                 # automatically sets logged in session cookie
                 login_user(user)
 
                 flask.flash(f"User {user.username} Logged in successfully.")
 
-                next = form.next.data
-                # is_safe_url should check if the url is safe for redirects.
-                # See http://flask.pocoo.org/snippets/62/ for an example.
-                if False and next and not is_safe_url(next):
-                    return flask.abort(400)
-
-                return flask.redirect(next or flask.url_for("index"))
+                return safe_redirect_next()
     return render_template("login.html", form=form)
 
+@app.get('/logout/')
+def logout_gitlab():
+    print('logout', session, session.get('access_token'))
+    flask_login.logout_user()
+    return redirect('/')
 
 @app.route("/profile/", methods=["GET", "POST", "PUT"])
 @login_required
 def my_profile():
     """Display or edit user's profile info"""
-    debug("/profile/ – current user:", current_user)
+    debug("/profile/ – current user:", current_user, request.host_url)
 
     form = ProfileForm()
     if form.is_submitted():
@@ -318,16 +324,44 @@ def get_users():
 @app.get("/users/<userid>")
 @login_required
 def get_user(userid):
-    u = User.get_user(userid)
+    if userid == 'me':
+        u = current_user
+    else:
+        u = User.get_user(userid)
 
     if u:
-        del u["password"]
+        del u["password"] # hide the password, just in case
         if prefers_json():
             return jsonify(u)
         else:
             return render_template("users.html", users=[u])
     else:
         abort(404)
+
+@app.before_request
+def before_request():
+    # can be used to allow particular inline scripts with Content-Security-Policy
+    g.csp_nonce = secrets.token_urlsafe(32)
+
+# Can be used to set HTTP headers on the responses
+@app.after_request
+def after_request(response):
+    # response.headers["Content-Security-Policy"] = 
+    return response
+
+def get_safe_redirect_url():
+    # see discussion at 
+    # https://stackoverflow.com/questions/60532973/how-do-i-get-a-is-safe-url-function-to-use-with-flask-and-how-does-it-work/61446498#61446498
+    next = request.values.get('next')
+    if next:
+        url = urlparse(next)
+        if not url.scheme and not url.netloc: # ignore if absolute url
+            return url.path   # use only the path
+    return None
+
+def safe_redirect_next():
+    next = get_safe_redirect_url()
+    return redirect(next or '/')
 
 # For full RFC2324 compatibilty
 
@@ -383,21 +417,10 @@ def sql_init():
             );"""
         )
         sql_execute(
-            """CREATE TABLE IF NOT EXISTS relation_kinds (
-            id INTEGER PRIMARY KEY,
-            name TEXT NOT NULL,
-            reflexive BOOLEAN NOT NULL
-            );"""
-        )
-        sql_execute(
-            f"INSERT INTO relation_kinds (id, name, reflexive) VALUES (1, 'buddy', TRUE);"
-        )
-        sql_execute(
-            """CREATE TABLE IF NOT EXISTS relations (
+            """CREATE TABLE IF NOT EXISTS buddies (
             user1_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
-            kind_id INTEGER REFERENCES relation_kinds(id),
             user2_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
-            PRIMARY KEY (user1_id, kind_id, user2_id)
+            PRIMARY KEY (user1_id, user2_id)
             );"""
         )
         alice = User(
@@ -414,10 +437,12 @@ def sql_init():
         bob.save()
         bob.add_token("test")
         sql_execute(
-            f"INSERT INTO relations (user1_id, kind_id, user2_id) VALUES ({alice.id}, 1, {bob.id}), ({bob.id}, 1, {alice.id});"
+            f"INSERT INTO buddies (user1_id, user2_id) VALUES ({alice.id}, {bob.id}), ({bob.id}, {alice.id});"
         )
         sql_execute("PRAGMA user_version = 1;")
 
 
 with app.app_context():
     sql_init()
+
+

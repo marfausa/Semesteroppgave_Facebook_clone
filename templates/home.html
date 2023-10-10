@@ -1,7 +1,9 @@
 {% extends "_layout.html" %}
 {% block title %}Home{% endblock %}
 {% block script %}
-<script>
+<script type="module" nonce="{{g.csp_nonce}}">
+    import { list_users, get_profile, format_profile, do_action } from '/script.js';
+
     // keep track of the current user in a global variable (the value is expanded by the template processor)
     window.current_user_id = '{{current_user.id}}';
 
@@ -17,7 +19,7 @@
             elt.addEventListener('click', async (ev) => {
                 // we can set the `data-action` attribute on an element to do
                 // something special (e.g., an "Add buddy" button)
-                if(ev.dataset.action) {
+                if(ev.target.dataset.action) {
                     do_action(current_user_id, ev.target);
                 } else { // we clicked anywhere else in the user entry
                     elt.classList.toggle('open'); // open/close the profile details

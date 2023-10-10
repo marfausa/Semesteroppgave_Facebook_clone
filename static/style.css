@@ -78,11 +78,11 @@ form label::after {
     margin-right: 0.5rem;
 }
 
-.user li {
+.field {
     margin: 0;
     display: block;
 }
-.user .key::after {
+.field .key::after {
     content: ': ';
 }
 form .error {
