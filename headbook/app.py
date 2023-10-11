@@ -19,12 +19,9 @@ from urllib.parse import urlparse
 from werkzeug.datastructures import WWWAuthenticate
 from werkzeug.security import generate_password_hash, check_password_hash
 from base64 import b64decode
-from apsw import Error
-from markupsafe import Markup, escape
 from box import Box
 from .login_form import LoginForm
 from .profile_form import ProfileForm
-from . import openid_connect
 db = None
 
 ################################
