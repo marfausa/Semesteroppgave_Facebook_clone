@@ -82,11 +82,13 @@ class User(flask_login.UserMixin, Box):
         )
         if "id" in self:
             sql_execute(
-                f"UPDATE users SET username='{self.username}', password='{self.password}', info='{info}' WHERE id={self.id};"
+                "UPDATE users SET username=?, password=?, info=? WHERE id=?;",
+                (self.username, self.password, info, self.id)
             )
         else:
             sql_execute(
-                f"INSERT INTO users (username, password, info) VALUES ('{self.username}', '{self.password}', '{info}');"
+                "INSERT INTO users (username, password, info) VALUES (?, ?, ?);",
+                (self.username, self.password, info)
             )
             self.id = db.last_insert_rowid()
 
@@ -94,19 +96,22 @@ class User(flask_login.UserMixin, Box):
         """Add a new access token for a user"""
         token = secrets.token_urlsafe(32)
         sql_execute(
-            f"INSERT INTO tokens (user_id, token, name) VALUES ({self.id}, '{token}', '{name}');"
+            "INSERT INTO tokens (user_id, token, name) VALUES (?, ?, ?);",
+            (self.id, token, name)
         )
 
     def delete_token(self, token):
         """Delete an access token"""
         sql_execute(
-            f"DELETE FROM tokens WHERE user_id = {self.id} AND token = '{token}'"
+            "DELETE FROM tokens WHERE user_id = ? AND token = ?;",
+            (self.id, token)
         )
 
     def get_tokens(self):
         """Retrieve all access tokens belonging to a user"""
         return sql_execute(
-            f"SELECT token, name FROM tokens WHERE user_id = {self.id}"
+            "SELECT token, name FROM tokens WHERE user_id = ?;",
+            (self.id,)
         ).fetchall()
 
     @staticmethod
@@ -119,15 +124,15 @@ class User(flask_login.UserMixin, Box):
     @staticmethod
     def get_user(userid):
         if type(userid) == int or userid.isnumeric():
-            sql = f"SELECT id, username, password, info FROM users WHERE id = {userid};"
+            sql = "SELECT id, username, password, info FROM users WHERE id = ?;"
+            row = sql_execute(sql, (userid,)).fetchone()
         else:
-            sql = f"SELECT id, username, password, info FROM users WHERE username = '{userid}';"
-        row = sql_execute(sql).fetchone()
+            sql = "SELECT id, username, password, info FROM users WHERE username = ?;"
+            row = sql_execute(sql, (userid,)).fetchone()
         if row:
             user = User(json.loads(row[3]))
             user.update({"id": row[0], "username": row[1], "password": row[2]})
             return user
-
 
 # This method is called whenever the login manager needs to get
 # the User object for a given user id – for example, when it finds
@@ -434,7 +439,8 @@ def sql_init():
         bob.save()
         bob.add_token("test")
         sql_execute(
-            f"INSERT INTO buddies (user1_id, user2_id) VALUES ({alice.id}, {bob.id}), ({bob.id}, {alice.id});"
+            "INSERT INTO buddies (user1_id, user2_id) VALUES (?, ?), (?, ?);",
+            (alice.id, bob.id), (bob.id, alice.id)
         )
         sql_execute("PRAGMA user_version = 1;")
 
