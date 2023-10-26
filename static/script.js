@@ -81,7 +81,7 @@ export function format_profile(user, elt) {
 
     const username = html`<em>${user.username}</em>`
     const birthdate = html`<em>${user.birthdate}</em>`
-    const color = html`<em>${user.color}</em>`
+    const color = html`<em>${user.color}</em> <div class="color-sample" style="${'background:'+user.color}"></div>`
     const about = html`<em>${user.about}</em>`
 
     render(elt, html`
@@ -90,7 +90,7 @@ export function format_profile(user, elt) {
             ${format_field('Name', username)}
             <div class="more">
                 ${format_field('Birth date', birthdate)}
-                ${format_field('Favourite colour', html`${color} <div class="color-sample" style="${'background:'+user.color}"></div>`)}
+                ${format_field('Favourite colour', color)}
                 ${format_field('About', about, 'long')}
             </div>
         </div>

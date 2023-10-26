@@ -39,15 +39,15 @@ app = Flask(
 #    app.config.from_pyfile(os.path.join(APP_PATH, 'secrets'))
 
 # The secret key enables storing encrypted session data in a cookie (TODO: make a secure random key for this! and don't store it in Git!)
-app.config["SECRET_KEY"] = "mY s3kritz"
+app.config["SECRET_KEY"] = secrets.token_urlsafe(32)
 app.config["TEMPLATES_AUTO_RELOAD"] = True
-#app.config["GITLAB_BASE_URL"] = 'https://git.app.uib.no/'
+app.config["GITLAB_BASE_URL"] = 'https://git.app.uib.no/'
 #app.config["GITLAB_CLIENT_ID"] = ''
 #app.config["GITLAB_CLIENT_SECRET"] = ''
 # Pick appropriate values for these
-#app.config['SESSION_COOKIE_NAME'] = 
-#app.config['SESSION_COOKIE_SAMESITE'] = 
-#app.config['SESSION_COOKIE_SECURE'] = 
+app.config['SESSION_COOKIE_NAME'] = "headbook_session"
+app.config['SESSION_COOKIE_SAMESITE'] = "Lax"
+app.config['SESSION_COOKIE_SECURE'] = False
 
 # Add a login manager to the app
 import flask_login
@@ -58,6 +58,7 @@ login_manager.init_app(app)
 login_manager.login_view = "login"
 
 ################################
+
 
 def debug(*args, **kwargs):
     if request and '_user_id' in session:
@@ -167,8 +168,11 @@ def request_loader(request):
         )
         debug(f"Basic auth: {uname}:{passwd}")
         u = User.get_user(uname)
-        if u and u.password == passwd:
+        # Changed to hashed password
+        if u and check_password_hash(u.password, passwd):
             return u
+        
+        
     elif auth_scheme == "bearer":  # Bearer auth contains an access token;
         # an 'access token' is a unique string that both identifies
         # and authenticates a user, so no username is provided (unless
@@ -271,6 +275,8 @@ def logout_gitlab():
 
 @app.route("/profile/", methods=["GET", "POST", "PUT"])
 @login_required
+
+
 def my_profile():
     """Display or edit user's profile info"""
     debug("/profile/ – current user:", current_user, request.host_url)
@@ -282,7 +288,13 @@ def my_profile():
         )
         if form.validate():
             if form.password.data: # change password if user set it
-                current_user.password = form.password.data
+                # Changed to hash password
+                new_password = form.password.data
+                if (new_password):
+                    current_user.password = new_password
+                else:
+                    pass
+                
             if form.birthdate.data: # change birthday if set
                 current_user.birthdate = form.birthdate.data.isoformat()
             # TODO: do we need additional validation for these?

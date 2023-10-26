@@ -4,7 +4,14 @@ from wtforms import StringField, PasswordField, SubmitField, TextAreaField, Date
 
 class ProfileForm(FlaskForm):
     username = StringField('Username', render_kw={'readonly': True})
-    password = PasswordField('Password', [validators.equal_to('password_again', message='Passwords must match')])
+    password = PasswordField('Password', [
+        validators.equal_to('password_again', message='Passwords must match'),
+        validators.InputRequired(message='Password is required'),
+        validators.Length(min=8, message='Password must be at least 8 characters long'),
+        validators.Regexp(regex='^(?=.*[A-Z])(?=.*[0-9])(?=.*[!@#$%^&*()-_+=<>?/])(?!.*\s).+$', 
+                          message='Password must meet the criteria'),
+    ])
+    
     password_again = PasswordField('Repeat Password')
     birthdate = DateField('Birth date', [validators.optional()])
     color = StringField('Favourite color')
