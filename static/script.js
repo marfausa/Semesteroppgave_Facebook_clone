@@ -51,16 +51,43 @@ export async function get_profile(userid) {
  * @param {*} options Object with options {optional: bool, className: string, long: bool}
  * @returns HTML text
  */
+
+//OLD FORMAT
+// export function format_field(key, value, options = {}) {
+//     if(options.optional && !value)
+//         return '';
+//     let classNames = 'field';
+//     if(options.className) // if we need extra styling
+//         classNames = `${classNames} ${options.className}`;
+//     if(options.long) // if the value is a longer text
+//         classNames = `${classNames} long`;
+//     const val = options.long ? `<div class="value">${value || ''}</div>` : ` <span class="value">${value || ''}</span>`
+//     return html`<li class="${classNames}"><span class="key">${key}</span>${val}</li>`
+// }
+
 export function format_field(key, value, options = {}) {
-    if(options.optional && !value)
-        return '';
+    if (options.optional && !value)
+        return null; // Return null if the field is optional and empty
+
     let classNames = 'field';
-    if(options.className) // if we need extra styling
+    if (options.className) // If you need extra styling
         classNames = `${classNames} ${options.className}`;
-    if(options.long) // if the value is a longer text
-        classNames = `${classNames} long`;
-    const val = options.long ? `<div class="value">${value || ''}</div>` : ` <span class="value">${value || ''}</span>`
-    return `<li class="${classNames}"><span class="key">${key}</span>${val}</li>`
+
+    if (options.long) { // If the value is a longer text
+        return html`
+            <li class="${classNames}">
+                <span class="key">${key}</span>
+                <div class="value">${value || ''}</div>
+            </li>
+        `;
+    } else {
+        return html`
+            <li class="${classNames}">
+                <span class="key">${key}</span>
+                <span class="value">${value || ''}</span>
+            </li>
+        `;
+    }
 }
 
 /**
@@ -70,6 +97,8 @@ export function format_field(key, value, options = {}) {
  * @param {*} elt An optional element to render the user into
  * @returns elt or a new element
  */
+
+//OLD UNSAFE
 export function format_profile(user, elt) {
     if(!elt) 
         elt = document.createElement('div');
@@ -78,22 +107,59 @@ export function format_profile(user, elt) {
         elt.classList.add('me');
     }
     // TODO: is this unsafe?
-    elt.innerHTML = `
-        <img src="${user.picture_url || '/unknown.png'}" alt="${user.username + "'s profile picture"}">
+    const username = html`<em>${user.username}</em>`
+    const birthdate = html`<em>${user.birthdate})</em>`
+    const about = html`<em>${user.about}</em>`
+
+    render(elt, html`
+    
+    <img src="${user.picture_url || '/unknown.png'}" alt="${user.username + "'s profile picture"}">
         <div class="data">
-            ${format_field('Name', user.username)}
+            ${format_field('Name', username)}
             <div class="more">
-                ${format_field('Birth date', user.birthdate)}
-                ${format_field('Favourite colour', `${user.color} <div class="color-sample" style="${'background:'+user.color}"></div>`)}
-                ${format_field('About', user.about, 'long')}
+                ${format_field('Birth date', birthdate)}
+                ${format_field('Favourite colour', html`${user.color} <div class="color-sample" style="${'background:'+user.color}"></div>`)}
+                ${format_field('About', about, 'long')}
             </div>
         </div>
         <div class="controls">
-            ${window.current_user_id == user.id ? '' : `<button type="button" data-user-id="${user.id}" data-action="add_buddy">Add buddy</button>`}
+        ${window.current_user_id == user.id ? '' : html`<button type="button" data-user-id="${user.id}" data-action="add_buddy">Add buddy</button>`}
         </div>
-    `;
+    
+    `);
     return elt;
 }
+//
+// NEW SAFE
+// <span class="field"><span class="key">Name</span> <span class="value">${user.username}</span></span>
+
+// export function format_profile(user, elt) {
+//     if (!elt) 
+//         elt = document.createElement('div');
+//     elt.classList.add('user'); // set CSS class
+//     if (user.id == current_user_id) { // current_user_id is a global variable (set on 'window')
+//         elt.classList.add('me');
+//     }
+
+//     render(elt, html`
+//     <em>
+//         <img src="${user.picture_url || '/unknown.png'}" alt="${user.username + "'s profile picture"}">
+//         <div class="data">
+//             <span class="field"><span class="key">Name</span> <span class="value">${user.username}</span></span>
+//             <div class="more">
+//                 <span class="field"><span class="key">Birth date</span> <span class="value">${user.birthdate}</span></span>
+//                 <span class="field"><span class="key">Favourite colour</span> <span class="value">${user.color} <div class="color-sample">${html`<div style=${{'background': user.color }}></div>`}</div></span>
+//                 <span class="field"><span class="key">About</span> <span class="value">${user.about}</span></span>
+//             </div>
+//         </div>
+//         <div class="controls">
+//             ${window.current_user_id == user.id ? '' : html`<button type="button" data-user-id="${user.id}" data-action="add_buddy">Add buddy</button>`}
+//         </div>
+//     </em>
+// `);
+
+//     return elt;
+// }
 
 /**
  * Perform an action, such as a button click.
