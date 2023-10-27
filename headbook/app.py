@@ -68,6 +68,11 @@ def debug(*args, **kwargs):
 def prefers_json():
     return request.accept_mimetypes.best_match(['application/json', 'text/html']) == 'application/json'
 
+def are_buddies(user1, user2):
+    query = "SELECT 1 FROM buddies WHERE (user1_id = ? AND user2_id = ?) OR (user1_id = ? AND user2_id = ?);"
+    result = sql_execute(query, (user1.id, user2.id, user2.id, user1.id)).fetchone()
+    return result is not None
+
 ################################
 # Class to store user info
 # UserMixin provides us with an `id` field and the necessary methods (`is_authenticated`, `is_active`, `is_anonymous` and `get_id()`).
@@ -84,12 +89,12 @@ class User(flask_login.UserMixin, Box):
         if "id" in self:
             sql_execute(
                 "UPDATE users SET username=?, password=?, info=? WHERE id=?;",
-                (self.username, self.password, info, self.id)
+                (self.username, generate_password_hash(self.password), info, self.id)
             )
         else:
             sql_execute(
                 "INSERT INTO users (username, password, info) VALUES (?, ?, ?);",
-                (self.username, self.password, info)
+                (self.username, generate_password_hash(self.password), info)
             )
             self.id = db.last_insert_rowid()
 
@@ -288,14 +293,9 @@ def my_profile():
         )
         if form.validate():
             if form.password.data: # change password if user set it
-                # Changed to hash password
-                new_password = form.password.data
-                if (new_password):
-                    current_user.password = new_password
-                else:
-                    pass
-                
-            if form.birthdate.data: # change birthday if set
+                current_user.password = generate_password_hash(form.password.data)
+
+                # change birthday if set
                 current_user.birthdate = form.birthdate.data.isoformat()
             # TODO: do we need additional validation for these?
             current_user.color = form.color.data
@@ -344,13 +344,16 @@ def get_user(userid):
         u = User.get_user(userid)
 
     if u:
-        del u["password"] # hide the password, just in case
-        if prefers_json():
-            return jsonify(u)
-        else:
-            return render_template("users.html", users=[u])
-    else:
-        abort(404)
+        is_buddy = are_buddies(current_user, u)
+        if u == current_user or is_buddy:
+            if u != current_user:
+                del u["password"]
+            if prefers_json():
+                return jsonify(u)
+            else:
+                return render_template("users.html", users=[u])
+
+    abort(404)
 
 @app.before_request
 def before_request():
