@@ -9,7 +9,7 @@ Having done this we can then log in to HeadBook with our prompted username and p
 
 # Task2b
 Injecting JavaScript code to 'about' field in profile with:
-<img src="x" onerror="alert('u got hacked')">
+"<img src="x" onerror="alert('u got hacked')">"
 This script is a Cross Site Scripting (XSS) attack which will trigger an alert to the user if the profile injected with the code is interacted with.
 The way the script works is that we make use of the image upload field to input a faulty source location, and then use our own onerror message to alert the user that they have been hacked.
 With the use of Content Security Policy we will be able to prevent XSS attacks.
