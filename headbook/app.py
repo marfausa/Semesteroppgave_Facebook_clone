@@ -71,7 +71,7 @@ def prefers_json():
 def are_buddies(user1, user2):
     query = "SELECT 1 FROM buddies WHERE (user1_id = ? AND user2_id = ?) OR (user1_id = ? AND user2_id = ?);"
     result = sql_execute(query, (user1.id, user2.id, user2.id, user1.id)).fetchone()
-    return result is not None
+    return result
 
 ################################
 # Class to store user info
