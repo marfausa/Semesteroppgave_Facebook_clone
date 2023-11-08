@@ -39,7 +39,7 @@ Having done this we can then log in to HeadBook with our prompted username and p
 # Task 2b 
 
 Injecting JavaScript code to 'about' field in profile with:
-<img src="x" onerror="alert('u got hacked')">
+< img src="x" onerror="alert('u got hacked')" >
 
 This script is a Cross Site Scripting (XSS) attack which will trigger an alert to the user if the profile injected with the code is interacted with.
 
