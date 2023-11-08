@@ -87,14 +87,15 @@ class User(flask_login.UserMixin, Box):
             {k: self[k] for k in self if k not in ["username", "password", "id"]}
         )
         if "id" in self:
+            self.password = generate_password_hash(self.password);
             sql_execute(
                 "UPDATE users SET username=?, password=?, info=? WHERE id=?;",
-                (self.username, generate_password_hash(self.password), info, self.id)
+                (self.username, self.password, info, self.id)
             )
         else:
             sql_execute(
                 "INSERT INTO users (username, password, info) VALUES (?, ?, ?);",
-                (self.username, generate_password_hash(self.password), info)
+                (self.username, self.password, info)
             )
             self.id = db.last_insert_rowid()
 
@@ -123,7 +124,7 @@ class User(flask_login.UserMixin, Box):
     @staticmethod
     def get_token_user(token):
         """Retrieve the user who owns a particular access token"""
-        user_id = sql_execute(f"SELECT user_id FROM tokens WHERE token = '{token}'").get
+        user_id = sql_execute("SELECT user_id FROM tokens WHERE token =?"), (token,).get;
         if user_id != None:
             return User.get_user(user_id)
 
@@ -131,10 +132,9 @@ class User(flask_login.UserMixin, Box):
     def get_user(userid):
         if type(userid) == int or userid.isnumeric():
             sql = "SELECT id, username, password, info FROM users WHERE id = ?;"
-            row = sql_execute(sql, (userid,)).fetchone()
         else:
             sql = "SELECT id, username, password, info FROM users WHERE username = ?;"
-            row = sql_execute(sql, (userid,)).fetchone()
+        row = sql_execute(sql, (userid,)).fetchone()
         if row:
             user = User(json.loads(row[3]))
             user.update({"id": row[0], "username": row[1], "password": row[2]})
