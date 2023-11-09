@@ -28,6 +28,8 @@ db = None
 # Set up app
 APP_PATH = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
+
+
 app = Flask(
     __name__,
     template_folder=os.path.join(APP_PATH, "templates/"),
@@ -363,7 +365,10 @@ def before_request():
 # Can be used to set HTTP headers on the responses
 @app.after_request
 def after_request(response):
-    # response.headers["Content-Security-Policy"] = 
+    response.headers["Content-Security-Policy"] = f"default-src 'self'; img-src 'self' https://git.app.uib.no/ data; style-src 'self'; script-src 'nonce-{g.csp_nonce}'; frame-ancestors 'none'; form-action 'self'; object-src 'none'; base-uri 'self';"
+    response.headers["X-Content-Type-Options"] = 'nosniff'
+    response.headers["server"] = None
+
     return response
 
 def get_safe_redirect_url():

@@ -81,8 +81,13 @@ export function format_profile(user, elt) {
 
     const username = html`<em>${user.username}</em>`
     const birthdate = html`<em>${user.birthdate}</em>`
-    const color = html`<em>${user.color}</em> <div class="color-sample" style="${'background:'+user.color}"></div>`
-    const about = html`<em>${user.about}</em>`
+    
+    const colorSample = document.createElement('div');
+    colorSample.classList.add('color-sample');
+    colorSample.style.background = user.color;
+
+    const color = html`<em>${user.color}</em> ${colorSample}`;
+    const about = html`<em>${user.about}</em>`;
 
     render(elt, html`
     <img src="${user.picture_url || '/unknown.png'}" alt="${user.username + "'s profile picture"}">
