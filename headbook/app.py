@@ -367,7 +367,6 @@ def before_request():
 def after_request(response):
     response.headers["Content-Security-Policy"] = f"default-src 'self'; img-src 'self' https://git.app.uib.no/ data; style-src 'self'; script-src 'nonce-{g.csp_nonce}'; frame-ancestors 'none'; form-action 'self'; object-src 'none'; base-uri 'self';"
     response.headers["X-Content-Type-Options"] = 'nosniff'
-    response.headers["server"] = None
 
     return response
 
