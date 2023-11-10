@@ -261,7 +261,6 @@ def login():
             password = form.password.data
             user = user_loader(username)
             if user and check_password_hash(user.password, password):
-            # if user and user.password == password:
                 # automatically sets logged in session cookie
                 login_user(user)
 
@@ -340,7 +339,7 @@ def get_user(userid):
         u = User.get_user(userid)
 
     if u:
-        # del u["password"]
+        del u["password"]
         are_buddies, _ = buddy_status(current_user, u)
         if u == current_user or are_buddies:
             if prefers_json():
@@ -484,12 +483,10 @@ def sql_init():
         ukjent = User({"username": "ukjent", "password": "ukjent", "color": "red"})
         ukjent.save()
         ukjent.add_token("mystisk")
-
         
         sql_execute(
             f"INSERT INTO buddies (user1_id, user2_id) VALUES ({alice.id}, {bob.id}), ({bob.id}, {alice.id});"
         )
-        print("So far so good")
         sql_execute("PRAGMA user_version = 1;")
 
 
