@@ -35,6 +35,15 @@ export async function list_users() {
 }
 
 /**
+ * Get list of buddies from server
+ * 
+ * @returns A list of simple buddies objects 
+ */
+export async function list_buddies() {
+    return await fetch_json('/buddies') || [];
+}
+
+/**
  * Get a user profile from the server
  * @param {*} userid The numeric user id
  * @returns A user object

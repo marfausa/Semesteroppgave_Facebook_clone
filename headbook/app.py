@@ -70,10 +70,6 @@ def debug(*args, **kwargs):
 def prefers_json():
     return request.accept_mimetypes.best_match(['application/json', 'text/html']) == 'application/json'
 
-def are_buddies(user1, user2):
-    query = "SELECT 1 FROM buddies WHERE (user1_id = ? AND user2_id = ?) OR (user1_id = ? AND user2_id = ?);"
-    result = sql_execute(query, (user1.id, user2.id, user2.id, user1.id)).fetchone()
-    return result
 
 ################################
 # Class to store user info
@@ -346,16 +342,41 @@ def get_user(userid):
         u = User.get_user(userid)
 
     if u:
-        is_buddy = are_buddies(current_user, u)
-        if u == current_user or is_buddy:
+        are_buddies, _ = get_buddy_info(current_user, u)
+        if u == current_user or are_buddies:
             if u != current_user:
                 del u["password"]
             if prefers_json():
                 return jsonify(u)
             else:
                 return render_template("users.html", users=[u])
+    else:
+        abort(404)
 
-    abort(404)
+# This method will send an sql query 
+@login_required
+def get_buddy_info(user1, user2):
+    # Execute query to get a list of buddies
+    query = " SELECT user2_id FROM buddies WHERE user1_id = ? OR user2_id = ?; "
+    results = sql_execute(query, (user1.id, user1.id)).fetchall()
+
+    # Check if buddies
+    buddy_ids = [result[0] for result in results]
+    are_buddies_result = user2.id in buddy_ids
+
+    # Retrieve info about the buddy
+    buddies = [User.get_user(buddy_id) for buddy_id in buddy_ids]
+    return are_buddies_result, buddies
+
+@app.get("/buddies/")
+@login_required
+def get_buddies():
+    _, buddies = get_buddy_info(current_user, current_user)
+
+    if prefers_json():
+        return jsonify(buddies)
+    else:
+        return render_template("buddies.html", buddies=buddies)
 
 @app.before_request
 def before_request():

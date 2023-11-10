@@ -1,0 +1,7 @@
+{% for buddy in buddies %}
+    {% for key in buddy %}
+        <li class="field">
+            <span class="key">{{ key }}</span> <span class="value">{{ buddy[key] }}</span>
+        </li>
+    {% endfor %}
+{% endfor %}

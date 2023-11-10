@@ -2,7 +2,7 @@
 {% block title %}Home{% endblock %}
 {% block script %}
 <script type="module" nonce="{{g.csp_nonce}}">
-    import { list_users, get_profile, format_profile, do_action } from '/script.js';
+    import { list_users, list_buddies, get_profile, format_profile, do_action } from '/script.js';
 
     // keep track of the current user in a global variable (the value is expanded by the template processor)
     window.current_user_id = '{{current_user.id}}';
@@ -12,6 +12,10 @@
     // It's `async` because we need to `await` the result of network requests.
     document.addEventListener("DOMContentLoaded", async (ev) => {
         let users = await list_users();
+        let buddies = await list_buddies();
+        buddies = buddies.map(({id})=> id);
+       
+
         users = users.map(user => { // for each user...
             // make an element to display on the page
             const elt = format_profile(user);
@@ -22,10 +26,12 @@
                 if(ev.target.dataset.action) {
                     do_action(current_user_id, ev.target);
                 } else { // we clicked anywhere else in the user entry
-                    elt.classList.toggle('open'); // open/close the profile details
-                    const details = await get_profile(user.id); // fetch/refresh profile
-                    if (details)
-                        format_profile(details, elt);
+                    if (buddies.includes(user.id) || user.id == current_user_id) {
+                        elt.classList.toggle('open'); // open/close the profile details
+                        const details = await get_profile(user.id); // fetch/refresh profile
+                        if (details)
+                            format_profile(details, elt);
+                    }
                 }
             });
             return elt;
