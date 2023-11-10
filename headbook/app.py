@@ -85,7 +85,6 @@ class User(flask_login.UserMixin, Box):
             {k: self[k] for k in self if k not in ["username", "password", "id"]}
         )
         if "id" in self:
-            self.password = generate_password_hash(self.password);
             sql_execute(
                 "UPDATE users SET username=?, password=?, info=? WHERE id=?;",
                 (self.username, self.password, info, self.id)
@@ -261,7 +260,8 @@ def login():
             username = form.username.data
             password = form.password.data
             user = user_loader(username)
-            if user and user.password == password:
+            if user and check_password_hash(user.password, password):
+            # if user and user.password == password:
                 # automatically sets logged in session cookie
                 login_user(user)
 
@@ -291,10 +291,10 @@ def my_profile():
             if form.password.data: # change password if user set it
                 current_user.password = generate_password_hash(form.password.data)
 
-                # change birthday if set
+            if form.birthdate.data: # change birthday if set
                 current_user.birthdate = form.birthdate.data.isoformat()
-            # TODO: do we need additional validation for these?
-            current_user.color = form.color.data
+            if form.color.data:
+                current_user.color = form.color.data
             current_user.picture_url = form.picture_url.data
             current_user.about = form.about.data
             current_user.save()
@@ -340,7 +340,7 @@ def get_user(userid):
         u = User.get_user(userid)
 
     if u:
-        del u["password"]
+        # del u["password"]
         are_buddies, _ = buddy_status(current_user, u)
         if u == current_user or are_buddies:
             if prefers_json():
@@ -354,18 +354,19 @@ def get_user(userid):
 @login_required
 def buddy_status(user1, user2):
     # Execute query to get a list of buddies
-    query = " SELECT user2_id FROM buddies WHERE user1_id = ? OR user2_id = ?; "
+    query = "SELECT user2_id FROM buddies WHERE user1_id = ? OR user2_id = ?;"
     results = sql_execute(query, (user1.id, user1.id)).fetchall()
 
     # Check if buddies
     buddy_ids = [result[0] for result in results]
     true_buddies = user2.id in buddy_ids
 
-    # Retrieve info about the buddy
+    # Retrieve info about the buddies
     buddy_list = [User.get_user(buddy_id) for buddy_id in buddy_ids]
 
-    # Make sure password is not included
-    buddy_list = [{"id": buddy.id, "username": buddy.username} for buddy in buddy_list]
+    # Remove user1 from buddy_list if user1 is the same as user2
+    buddy_list = [{"id": buddy.id, "username": buddy.username} for buddy in buddy_list if buddy.id != user1.id]
+
     return true_buddies, buddy_list
 
 @app.get("/buddies/")
@@ -473,18 +474,19 @@ def sql_init():
             );"""
         )
         
-        
+        alice_pass = generate_password_hash("password123")
         alice = User(
             {
                 "username": "alice",
-                "password": "password123",
+                "password": alice_pass,
                 "color": "green",
                 "picture_url": "https://git.app.uib.no/uploads/-/system/user/avatar/788/avatar.png",
             }
         )
         alice.save()
         alice.add_token("example")
-        bob = User({"username": "bob", "password": "bananas", "color": "red"})
+        bob_pass = generate_password_hash("bananas")
+        bob = User({"username": "bob", "password": bob_pass, "color": "red"})
         bob.save()
         bob.add_token("test")
         sql_execute(

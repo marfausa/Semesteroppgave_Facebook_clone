@@ -5,6 +5,7 @@ from wtforms import StringField, PasswordField, SubmitField, TextAreaField, Date
 class ProfileForm(FlaskForm):
     username = StringField('Username', render_kw={'readonly': True})
     password = PasswordField('Password', [
+        validators.optional(),
         validators.equal_to('password_again', message='Passwords must match'),
         validators.InputRequired(message='Password is required'),
         validators.Length(min=8, message='Password must be at least 8 characters long'),

@@ -81,25 +81,20 @@ export function format_field(key, value, options = {}) {
  */
 
 export function format_profile(user, elt) {
-    if(!elt) 
+    if (!elt) 
         elt = document.createElement('div');
     elt.classList.add('user'); // set CSS class
-    if(user.id == current_user_id) { // current_user_id is a global variable (set on 'window')
+    if (user.id == current_user_id) { // current_user_id is a global variable (set on 'window')
         elt.classList.add('me');
     }
 
     const username = html`<em>${user.username}</em>`
     const birthdate = html`<em>${user.birthdate}</em>`
-    
-    const colorSample = document.createElement('div');
-    colorSample.classList.add('color-sample');
-    colorSample.style.background = user.color;
-
-    const color = html`<em>${user.color}</em> ${colorSample}`;
+    const color = html`<em>${user.color}</em> ${renderColorSample(user.color)}`;
     const about = html`<em>${user.about}</em>`;
 
     render(elt, html`
-    <img src="${user.picture_url || '/unknown.png'}" alt="${user.username + "'s profile picture"}">
+        <img src="${user.picture_url || '/unknown.png'}" alt="${user.username + "'s profile picture"}">
         <div class="data">
             ${format_field('Name', username)}
             <div class="more">
@@ -109,12 +104,18 @@ export function format_profile(user, elt) {
             </div>
         </div>
         <div class="controls">
-        ${window.current_user_id == user.id ? '' : html`<button type="button" data-user-id="${user.id}" data-action="add_buddy">Add buddy</button>`}
+            ${window.current_user_id == user.id ? '' : html`<button type="button" data-user-id="${user.id}" data-action="add_buddy">Add buddy</button>`}
         </div>
     `);
     return elt;
 }
 
+export function renderColorSample(color) {
+    const colorSample = document.createElement('div');
+    colorSample.classList.add('color-sample');
+    colorSample.style.backgroundColor = color;  // Set the background color
+    return colorSample;
+}
 /**
  * Perform an action, such as a button click.
  * 
