@@ -342,10 +342,9 @@ def get_user(userid):
         u = User.get_user(userid)
 
     if u:
+        del u["password"]
         are_buddies, _ = get_buddy_info(current_user, u)
         if u == current_user or are_buddies:
-            if u != current_user:
-                del u["password"]
             if prefers_json():
                 return jsonify(u)
             else:
@@ -372,11 +371,12 @@ def get_buddy_info(user1, user2):
 @login_required
 def get_buddies():
     _, buddies = get_buddy_info(current_user, current_user)
+    buddies_without_password = [{"id": buddy.id, "username": buddy.username} for buddy in buddies]
 
     if prefers_json():
-        return jsonify(buddies)
+        return jsonify(buddies_without_password)
     else:
-        return render_template("buddies.html", buddies=buddies)
+        return render_template("buddies.html", buddies=buddies_without_password)
 
 @app.before_request
 def before_request():
@@ -465,6 +465,15 @@ def sql_init():
             PRIMARY KEY (user1_id, user2_id)
             );"""
         )
+        sql_execute(
+            """CREATE TABLE IF NOT EXISTS befriending (
+            sender_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+            receiver_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+            PRIMARY KEY (sender_id, receiver_id)
+            );"""
+        )
+        
+        
         alice = User(
             {
                 "username": "alice",
