@@ -87,12 +87,12 @@ class User(flask_login.UserMixin, Box):
         if "id" in self:
             sql_execute(
                 "UPDATE users SET username=?, password=?, info=? WHERE id=?;",
-                (self.username, self.password, info, self.id)
+                (self.username, generate_password_hash(self.password), info, self.id)
             )
         else:
             sql_execute(
                 "INSERT INTO users (username, password, info) VALUES (?, ?, ?);",
-                (self.username, self.password, info)
+                (self.username, generate_password_hash(self.password), info)
             )
             self.id = db.last_insert_rowid()
 
@@ -289,7 +289,7 @@ def my_profile():
         )
         if form.validate():
             if form.password.data: # change password if user set it
-                current_user.password = generate_password_hash(form.password.data)
+                current_user.password = form.password.data
 
             if form.birthdate.data: # change birthday if set
                 current_user.birthdate = form.birthdate.data.isoformat()
@@ -440,7 +440,6 @@ def sql_execute(stmt, *args, **kwargs):
     debug(stmt, args or "", kwargs or "")
     return get_cursor().execute(stmt, *args, **kwargs)
 
-
 def sql_init():
     global db
     db = apsw.Connection("./users.db")
@@ -466,37 +465,36 @@ def sql_init():
             PRIMARY KEY (user1_id, user2_id)
             );"""
         )
-        sql_execute(
-            """CREATE TABLE IF NOT EXISTS befriending (
-            sender_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
-            receiver_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
-            PRIMARY KEY (sender_id, receiver_id)
-            );"""
-        )
         
-        alice_pass = generate_password_hash("password123")
         alice = User(
             {
                 "username": "alice",
-                "password": alice_pass,
+                "password": "password123",
                 "color": "green",
                 "picture_url": "https://git.app.uib.no/uploads/-/system/user/avatar/788/avatar.png",
             }
         )
         alice.save()
         alice.add_token("example")
-        bob_pass = generate_password_hash("bananas")
-        bob = User({"username": "bob", "password": bob_pass, "color": "red"})
+        
+        bob = User({"username": "bob", "password": "bananas", "color": "red"})
         bob.save()
         bob.add_token("test")
+
+        ukjent = User({"username": "ukjent", "password": "ukjent", "color": "red"})
+        ukjent.save()
+        ukjent.add_token("mystisk")
+
+        
         sql_execute(
-            "INSERT INTO buddies (user1_id, user2_id) VALUES (?, ?), (?, ?);",
-            (alice.id, bob.id), (bob.id, alice.id)
+            f"INSERT INTO buddies (user1_id, user2_id) VALUES ({alice.id}, {bob.id}), ({bob.id}, {alice.id});"
         )
+        print("So far so good")
         sql_execute("PRAGMA user_version = 1;")
 
 
 with app.app_context():
     sql_init()
+
 
 
