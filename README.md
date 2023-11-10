@@ -68,6 +68,40 @@ Bearer authentication should be implemented instead of basic base64 authenticati
 To further prevent SQL injection attacks we could implement extra defense mechanisms like "least privilege" and "Allow-list input validation".
 We could continue to better the access control, and assign roles to different users where only users with the appropriate role are able to perform certain actions.
 
+
+## Task 3b
+One of the main missing features I had was to implement a functional add/delete buddy system. I first started on that task and made progress until I had implemented a way to determine if two users are buddies, but then figured that I should probably fix some of the vulnerabilities I had left unattended instead. This led me to run a diagnostic with ZAP to see what bugs that needed to be squashed.
+
+Here I realised I had overlooked an error in my attempt to parameterize SQL queries, and that my implementation for the SQL query for tokens was wrongly done.
+
+I then changed the code:
+```py
+user_id = sql_execute(f"SELECT user_id FROM tokens WHERE token = '{token}'").get
+```
+to:
+```py
+user_id = sql_execute("SELECT user_id FROM tokens WHERE token =?"), (token,).get
+```
+
+After fixing the SQL vulnerability I then procceeded to implement some Content Security Policy headers. 
+```py
+def after_request(response):
+    response.headers["Content-Security-Policy"] = f"default-src 'self'; img-src 'self' https://git.app.uib.no/ data; style-src 'self'; script-src 'nonce-{g.csp_nonce}'; frame-ancestors 'none'; form-action 'self'; object-src 'none'; base-uri 'self';"
+    response.headers["X-Content-Type-Options"] = 'nosniff'
+    return response
+```
+Here I made sure to prevent Wildcard Directive by setting a fixed domain for image sources, which in addition to 'self' I set to git.app.uib.no where Alice's image source is from.
+The CSP header also effectively sets a strict Transport Security header and prevents unsafe inline.
+By adding another header 'nosniff' I also made sure the response header mitigate clickjacking attacks.
+
+Finally I also realised that my implementation of basic hashing of passwords were not properly implemented, so I made sure that fix this as well.
+This was done by using the already imported create_hashed_password() and check_hashed_password() and calling them on the passwords inside the save() method.
+Also in order for the database to properly initalise for the first time, I left the password unhashed in sql_init() and inserted them into the sql tables in plaintext, but with
+the save function called on later, the passwords in the table would be updated with the hashed version instead. From then on once you log in with the password, the hashed input will compare to the saved hashed passwords and let the user log in if correct. From then on changing passwords is possible in the profile page, but will need a stronger password than the initial ones.
+
+For viewing users in the home page, I also implemented a buddy_status() and a get_buddies() function together with a buddies.html template. By doing this the web page will not render any information regarding a user that the logged in user is not buddies with. 
+
+
 # Copyright
 
 * `unknown.png` – from [OpenMoji](https://openmoji.org/about/) ([Attribution-ShareAlike 4.0 International](https://creativecommons.org/licenses/by-sa/4.0/))

@@ -121,7 +121,7 @@ class User(flask_login.UserMixin, Box):
     @staticmethod
     def get_token_user(token):
         """Retrieve the user who owns a particular access token"""
-        user_id = sql_execute("SELECT user_id FROM tokens WHERE token =?"), (token,).get;
+        user_id = sql_execute("SELECT user_id FROM tokens WHERE token =?"), (token,).get
         if user_id != None:
             return User.get_user(user_id)
 
