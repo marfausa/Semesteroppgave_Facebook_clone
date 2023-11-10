@@ -278,8 +278,6 @@ def logout_gitlab():
 
 @app.route("/profile/", methods=["GET", "POST", "PUT"])
 @login_required
-
-
 def my_profile():
     """Display or edit user's profile info"""
     debug("/profile/ – current user:", current_user, request.host_url)
@@ -343,7 +341,7 @@ def get_user(userid):
 
     if u:
         del u["password"]
-        are_buddies, _ = get_buddy_info(current_user, u)
+        are_buddies, _ = buddy_status(current_user, u)
         if u == current_user or are_buddies:
             if prefers_json():
                 return jsonify(u)
@@ -352,31 +350,33 @@ def get_user(userid):
     else:
         abort(404)
 
-# This method will send an sql query 
+# This method will send an sql query to check for buddy relations
 @login_required
-def get_buddy_info(user1, user2):
+def buddy_status(user1, user2):
     # Execute query to get a list of buddies
     query = " SELECT user2_id FROM buddies WHERE user1_id = ? OR user2_id = ?; "
     results = sql_execute(query, (user1.id, user1.id)).fetchall()
 
     # Check if buddies
     buddy_ids = [result[0] for result in results]
-    are_buddies_result = user2.id in buddy_ids
+    true_buddies = user2.id in buddy_ids
 
     # Retrieve info about the buddy
-    buddies = [User.get_user(buddy_id) for buddy_id in buddy_ids]
-    return are_buddies_result, buddies
+    buddy_list = [User.get_user(buddy_id) for buddy_id in buddy_ids]
+
+    # Make sure password is not included
+    buddy_list = [{"id": buddy.id, "username": buddy.username} for buddy in buddy_list]
+    return true_buddies, buddy_list
 
 @app.get("/buddies/")
 @login_required
 def get_buddies():
-    _, buddies = get_buddy_info(current_user, current_user)
-    buddies_without_password = [{"id": buddy.id, "username": buddy.username} for buddy in buddies]
+    _, buddies = buddy_status(current_user, current_user)
 
     if prefers_json():
-        return jsonify(buddies_without_password)
+        return jsonify(buddies)
     else:
-        return render_template("buddies.html", buddies=buddies_without_password)
+        return render_template("buddies.html", buddies=buddies)
 
 @app.before_request
 def before_request():
